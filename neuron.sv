@@ -70,6 +70,6 @@ output logic signed [accu_width-1:0] out
   end
 
     //==== ReLU activation unit ====//
-  assign out = (sum_result[accu_width-1]==1'b1) ? '0:sum_result;
+  assign out = sum_result;
   
 endmodule
