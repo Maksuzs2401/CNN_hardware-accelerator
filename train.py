@@ -21,22 +21,27 @@ Run:
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.utils.class_weight import compute_class_weight
+from collections import Counter
+from imblearn.over_sampling import SMOTE
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from sklearn.metrics import classification_report, confusion_matrix
+
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
 PROCESSED_DIR  = "./processed"
 MODEL_DIR      = "./model"
 SEGMENT_LENGTH = 187
 N_CLASSES      = 5
-BATCH_SIZE     = 64
-EPOCHS         = 30
-LEARNING_RATE  = 0.001
+BATCH_SIZE     = 32
+EPOCHS         = 50
+LEARNING_RATE  = 0.0003
 AAMI_CLASSES   = ['N', 'S', 'V', 'F', 'Q']
 
 os.makedirs(MODEL_DIR, exist_ok=True)
+tf.random.set_seed(42)
+np.random.seed(42)
 
 
 # ─── Build the 1D CNN ─────────────────────────────────────────────────────────
@@ -58,6 +63,7 @@ def build_model():
     x = layers.BatchNormalization(name='bn1')(x)
     x = layers.ReLU(name='relu1')(x)
     x = layers.MaxPooling1D(pool_size=2, name='pool1')(x)
+    x = layers.Dropout(0.2, name='drop1')(x)
     # Shape: (93, 32)
 
     # ── Block 2: find complex patterns (wave shapes) ──────────────────
@@ -65,6 +71,7 @@ def build_model():
     x = layers.BatchNormalization(name='bn2')(x)
     x = layers.ReLU(name='relu2')(x)
     x = layers.MaxPooling1D(pool_size=2, name='pool2')(x)
+    x = layers.Dropout(0.2, name='drop2')(x)
     # Shape: (46, 64)
 
     # ── Block 3: find high-level features ────────────────────────────
@@ -72,19 +79,16 @@ def build_model():
     x = layers.BatchNormalization(name='bn3')(x)
     x = layers.ReLU(name='relu3')(x)
     x = layers.MaxPooling1D(pool_size=2, name='pool3')(x)
+    x = layers.Dropout(0.3, name='drop3')(x)
     # Shape: (23, 128)
 
-    # ── Classifier head ───────────────────────────────────────────────
-    x = layers.Flatten(name='flatten')(x)           # → 2944
-    x = layers.Dense(128, activation='relu',
-                     name='dense1')(x)
-    x = layers.Dropout(0.5, name='dropout')(x)      # prevent overfitting
-    outputs = layers.Dense(N_CLASSES,
-                           activation='softmax',
-                           name='output')(x)         # → 5 class probabilities
+    # Classifier head
+    x = layers.Flatten(name='flatten')(x)
+    x = layers.Dense(64, activation='relu', name='dense1')(x)
+    x = layers.Dropout(0.5, name='drop4')(x)
+    outputs = layers.Dense(N_CLASSES, activation='softmax', name='output')(x)
 
-    model = keras.Model(inputs, outputs, name="ECG_CNN")
-    return model
+    return keras.Model(inputs, outputs, name="ECG_CNN_v2")
 
 
 # ─── Load data ────────────────────────────────────────────────────────────────
@@ -94,34 +98,51 @@ def load_data():
     X_test  = np.load(os.path.join(PROCESSED_DIR, "X_test.npy"))
     y_test  = np.load(os.path.join(PROCESSED_DIR, "y_test.npy"))
 
-    # Add channel dimension: (N, 187) → (N, 187, 1)
-    # Required by Conv1D
-    X_train = X_train[..., np.newaxis]
-    X_test  = X_test[...,  np.newaxis]
-
-    print(f"X_train: {X_train.shape}  y_train: {y_train.shape}")
-    print(f"X_test : {X_test.shape}   y_test : {y_test.shape}")
+    print(f"Loaded  X_train: {X_train.shape}   y_train: {y_train.shape}")
+    print(f"Loaded  X_test : {X_test.shape}    y_test : {y_test.shape}")
     return X_train, y_train, X_test, y_test
 
 
-# ─── Class weights (fix imbalance) ───────────────────────────────────────────
-def get_class_weights(y_train):
+# ─── SMOTE oversampling ───────────────────────────────────────────────────────
+def oversample(X_train, y_train):
     """
-    MIT-BIH is ~90% class N (Normal).
-    Without class weights the model just predicts N for everything.
-    Class weights penalize wrong predictions on minority classes more.
+    SMOTE = Synthetic Minority Oversampling Technique.
+
+    WHY we need this:
+      N = 72471 beats  (82.8%)  ← model only learns this
+      F =   641 beats  ( 0.7%)  ← model ignores this completely
+
+    WHAT SMOTE does:
+      Creates synthetic (fake but realistic) beats for minority classes
+      until all 5 classes have equal numbers.
+
+    RESULT:
+      All 5 classes → ~72471 beats each
+      Model is forced to learn F and Q properly.
     """
-    classes = np.unique(y_train)
-    weights = compute_class_weight('balanced', classes=classes, y=y_train)
-    cw = dict(zip(classes.tolist(), weights.tolist()))
-    print("\nClass weights:")
+    print("\nApplying SMOTE oversampling ...")
+    print("Class counts BEFORE:")
+    counts = Counter(y_train.tolist())
     for i, cls in enumerate(AAMI_CLASSES):
-        print(f"  {cls}: {cw.get(i, 0):.3f}")
-    return cw
+        print(f"  {cls} (class {i}): {counts.get(i, 0):>6} beats")
+
+    smote        = SMOTE(random_state=42)
+    X_res, y_res = smote.fit_resample(X_train, y_train)
+
+    print("\nClass counts AFTER SMOTE:")
+    counts_new = Counter(y_res.tolist())
+    for i, cls in enumerate(AAMI_CLASSES):
+        print(f"  {cls} (class {i}): {counts_new.get(i, 0):>6} beats")
+
+    print(f"\nTotal training beats: {len(X_res)}")
+    return X_res, y_res
 
 
 # ─── Train ────────────────────────────────────────────────────────────────────
-def train(model, X_train, y_train, class_weights):
+def train(model, X_train, y_train):
+    # Add channel dimension: (N, 187) → (N, 187, 1)
+    X_in = X_train[..., np.newaxis]
+
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=LEARNING_RATE),
         loss='sparse_categorical_crossentropy',
@@ -131,29 +152,35 @@ def train(model, X_train, y_train, class_weights):
     model.summary()
 
     callbacks = [
-        # Stop early if val_loss stops improving (saves time)
+        # Stop if val_accuracy stops improving
         keras.callbacks.EarlyStopping(
-            monitor='val_loss', patience=5,
-            restore_best_weights=True, verbose=1
+            monitor='val_accuracy',
+            patience=8,
+            restore_best_weights=True,
+            verbose=1,
         ),
-        # Reduce learning rate if stuck
+        # Reduce LR if stuck
         keras.callbacks.ReduceLROnPlateau(
-            monitor='val_loss', factor=0.5,
-            patience=3, min_lr=1e-6, verbose=1
+            monitor='val_accuracy',
+            factor=0.5,
+            patience=4,
+            min_lr=1e-6,
+            verbose=1,
         ),
-        # Save best model to disk
+        # Save best model
         keras.callbacks.ModelCheckpoint(
             filepath=os.path.join(MODEL_DIR, "ecg_cnn.keras"),
-            monitor='val_loss', save_best_only=True, verbose=1
+            monitor='val_accuracy',
+            save_best_only=True,
+            verbose=1,
         ),
     ]
 
     history = model.fit(
-        X_train, y_train,
-        validation_split=0.1,        # use 10% of train as validation
+        X_in, y_train,
+        validation_split=0.1,
         epochs=EPOCHS,
         batch_size=BATCH_SIZE,
-        class_weight=class_weights,
         callbacks=callbacks,
         verbose=1,
     )
@@ -162,27 +189,36 @@ def train(model, X_train, y_train, class_weights):
 
 # ─── Evaluate ────────────────────────────────────────────────────────────────
 def evaluate(model, X_test, y_test):
-    from sklearn.metrics import classification_report, confusion_matrix
+    X_in   = X_test[..., np.newaxis]
+    y_pred = np.argmax(model.predict(X_in, verbose=0), axis=1)
 
-    print("\n── Test Set Evaluation ─────────────────────────────")
-    y_pred = np.argmax(model.predict(X_test, verbose=0), axis=1)
-
+    print("\n── Test Set Results ─────────────────────────────────")
     print(classification_report(
         y_test, y_pred,
         target_names=AAMI_CLASSES,
-        digits=4
+        digits=4,
     ))
 
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    # Confusion matrix
+    print("Confusion Matrix (rows=actual, cols=predicted):")
+    cm = confusion_matrix(y_test, y_pred)
+    print(f"{'':6}", end="")
+    for cls in AAMI_CLASSES:
+        print(f"{cls:>8}", end="")
+    print()
+    for i, row in enumerate(cm):
+        print(f"{AAMI_CLASSES[i]:6}", end="")
+        for val in row:
+            print(f"{val:>8}", end="")
+        print()
 
 
-# ─── Plot training curves ────────────────────────────────────────────────────
+# ─── Plot ────────────────────────────────────────────────────────────────────
 def plot_history(history):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     ax1.plot(history.history['accuracy'],     label='Train')
-    ax1.plot(history.history['val_accuracy'], label='Val')
+    ax1.plot(history.history['val_accuracy'], label='Validation')
     ax1.set_title('Accuracy over Epochs')
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Accuracy')
@@ -190,7 +226,7 @@ def plot_history(history):
     ax1.grid(True)
 
     ax2.plot(history.history['loss'],     label='Train')
-    ax2.plot(history.history['val_loss'], label='Val')
+    ax2.plot(history.history['val_loss'], label='Validation')
     ax2.set_title('Loss over Epochs')
     ax2.set_xlabel('Epoch')
     ax2.set_ylabel('Loss')
@@ -200,29 +236,29 @@ def plot_history(history):
     plt.tight_layout()
     path = os.path.join(MODEL_DIR, "training_history.png")
     plt.savefig(path, dpi=150)
-    print(f"\nTraining plot saved → {path}")
+    print(f"Plot saved → {path}")
     plt.show()
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
+# ─── Main ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
 
-    # Load data
+    # 1. Load data
     X_train, y_train, X_test, y_test = load_data()
 
-    # Class weights
-    class_weights = get_class_weights(y_train)
+    # 2. Balance classes with SMOTE
+    X_train, y_train = oversample(X_train, y_train)
 
-    # Build model
+    # 3. Build model
     model = build_model()
 
-    # Train
-    history = train(model, X_train, y_train, class_weights)
+    # 4. Train
+    history = train(model, X_train, y_train)
 
-    # Evaluate on test set
+    # 5. Evaluate on real test data
     evaluate(model, X_test, y_test)
 
-    # Plot
+    # 6. Plot training curves
     plot_history(history)
 
     print(f"\nModel saved → {MODEL_DIR}/ecg_cnn.keras")
