@@ -1,23 +1,5 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 27.03.2026 20:03:44
-// Design Name: 
-// Module Name: l1_l2_buff
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+
 `include "config.vh"
 
 module l1_l2_buff #(parameter IN_CHANNELS = `L1_neurons,
@@ -56,13 +38,12 @@ module l1_l2_buff #(parameter IN_CHANNELS = `L1_neurons,
             is_shifting <= 1'b1;
             m_axis_tvalid <= 1'b1;
             for (int i = 0; i < IN_CHANNELS; i++) begin
-                //SHIFTING //blocking used
                 scaled_val = s_axis_tdata[i] >>> SCALE_SHIFT;
                 if (i == 0) begin
                 $display("[%0t] SERIALIZER PROBE | Raw In: %0d | Shift Param: %0d | Scaled: %0d", 
                          $time, s_axis_tdata[0], SCALE_SHIFT, scaled_val);end
-                // Cap at maximum 8-bit signed value (127)
-                if (scaled_val > 24'sd127) begin
+                
+                if (scaled_val > 24'sd127) begin   // Capped at maximum 8-bit signed value (127)
                     shift_reg[i] <= 8'sd127;
                 end else begin
                     shift_reg[i] <= scaled_val[`data_width-1:0]; 
@@ -72,12 +53,10 @@ module l1_l2_buff #(parameter IN_CHANNELS = `L1_neurons,
             // PHASE 2: Serial Shift
             m_axis_tvalid      <= 1'b1;
             if(m_axis_tready)begin
-                // Shift everything down by 1
-                for (int i = 0; i < IN_CHANNELS-1; i++) begin
+                for (int i = 0; i < IN_CHANNELS-1; i++) begin       // Shifting everything down by 1
                     shift_reg[i] <= shift_reg[i+1];
                 end
-            // Check if we have sent the last neuron's data
-                if (shift_counter == IN_CHANNELS - 1) begin
+                if (shift_counter == IN_CHANNELS - 1) begin          // Checking if we have sent the last neuron's data
                     is_shifting   <= 1'b0; 
                     m_axis_tvalid <= 1'b0;    
                     shift_counter <= 0;
