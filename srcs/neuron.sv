@@ -1,31 +1,12 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 24.03.2026 16:27:25
-// Design Name: 
-// Module Name: neuron
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 `include "config.vh"
 
 module neuron #(parameter data_width = 8,
                 parameter accu_width = 24,parameter kernel_size = 5)(
     input  logic                           clk,
     input  logic                           rst_n,
-    input  logic signed [data_width-1:0]   s_axis_tdata,   // Scalar input (1 wire)
-    input  logic signed [data_width-1:0]   s_axis_tdata_wgt,  // Scalar weight (1 wire)
+    input  logic signed [data_width-1:0]   s_axis_tdata,   
+    input  logic signed [data_width-1:0]   s_axis_tdata_wgt, 
     input  logic                           s_axis_tvalid,
     input  logic                           s_axis_tlast,
     output logic                           s_axis_tready,
