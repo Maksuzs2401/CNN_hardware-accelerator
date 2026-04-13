@@ -3,7 +3,7 @@
 
 module line_buffer #(
     parameter KERNEL_SIZE = 5,
-    parameter NUM_CHANNELS = 1  // Defaults to 1 for Layer 1. Set to 32 for Layer 2!
+    parameter NUM_CHANNELS = 1  // Defaults to 1
 )(
     input  logic clk,
     input  logic rst_n,
@@ -11,14 +11,13 @@ module line_buffer #(
     input  logic s_axis_tvalid,
     input  logic s_axis_tlast,
     output logic s_axis_tready,
-    // The output is flattened: KERNEL_SIZE * NUM_CHANNELS
     output logic signed [`data_width-1:0] m_axis_tdata [(KERNEL_SIZE * NUM_CHANNELS)-1:0],
     output logic m_axis_tvalid,
     input  logic m_axis_tready
 );
     
     // 2D Memory Grid: [Time Steps] [Channels]
-    logic signed [`data_width-1:0] shift_mem [KERNEL_SIZE-1:0][NUM_CHANNELS-1:0];
+    logic signed [`data_width-1:0] shift_mem [KERNEL_SIZE-1:0][NUM_CHANNELS-1:0];  
     
     integer ch_count;
     integer time_count;
@@ -64,7 +63,7 @@ module line_buffer #(
         end
     end
 
-    // 5. Flatten the 2D array into a 1D output for the neurons
+    //Flatten the 2D array into a 1D output.
     always_comb begin
         for (int i = 0; i < KERNEL_SIZE; i++) begin
             for (int j = 0; j < NUM_CHANNELS; j++) begin
