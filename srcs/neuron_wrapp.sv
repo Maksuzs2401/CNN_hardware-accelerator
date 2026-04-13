@@ -163,7 +163,9 @@ module neuron_wrapp(
          .s_axis_tvalid(w_l3_mac_valid),.s_axis_tready(w_l3_maxpool_ready),
          .m_axis_tdata(w_l3_pool_out),.m_axis_tvalid(w_l3_pool_valid),
          .m_axis_tready(w_l3_serializer_ready));
-   
+
+    // Layer-4 instances
+    
    l3_l4_buff #(.IN_CHANNELS(`L3_neurons))
          serializer_block_l3(.clk(clk),.rst_n(rst_n),.s_axis_tdata(w_l3_pool_out),
          .s_axis_tvalid(w_l3_pool_valid),.s_axis_tready(w_l3_serializer_ready),
