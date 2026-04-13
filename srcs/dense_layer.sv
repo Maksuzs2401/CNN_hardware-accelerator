@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 08.04.2026 13:04:07
-// Design Name: 
-// Module Name: dense_layer
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module dense_layer #(parameter neuron_no=`L4_neurons,
                      parameter weights = `L1_weights,
@@ -64,8 +44,7 @@ localparam ROM_WIDTH = neuron_no * `data_width; // 64 * 8 = 512 bits wide
         $readmemh(weight_file, weight_rom);
     end
     
-    // ==========================================
-    // 3. PIPELINE SYNCHRONIZATION (1 Cycle Latency)
+    // 3. PIPELINE SYNC (1 Cycle Latency)
     // ==========================================
     logic [ROM_WIDTH-1:0]          packed_weight_reg;
     logic signed [`data_width-1:0] delayed_tdata;
@@ -79,8 +58,8 @@ localparam ROM_WIDTH = neuron_no * `data_width; // 64 * 8 = 512 bits wide
             delayed_tvalid    <= 1'b0;
             delayed_tlast     <= 1'b0;
         end else begin
-            // Fetch 512-bit weight box (Takes 1 cycle)
-            packed_weight_reg <= weight_rom[addr_count];
+           
+          packed_weight_reg <= weight_rom[addr_count];         // Fetching 512-bit data (Takes 1 cycle)
             
             // Delay incoming data and controls by 1 cycle to match the ROM
             delayed_tdata     <= s_axis_tdata;
@@ -101,13 +80,13 @@ localparam ROM_WIDTH = neuron_no * `data_width; // 64 * 8 = 512 bits wide
                      .kernel_size(1)) 
             mac_inst (.clk(clk),
                 .rst_n(rst_n),
-                .s_axis_tdata(delayed_tdata),          // Broadcasted scalar data
-                .s_axis_tdata_wgt(w_weights),      // Unique scalar weight for this neuron
-                .s_axis_tvalid(delayed_tvalid),
-                .s_axis_tlast(delayed_tlast),
-                .s_axis_tready(),                     // Unconnected, handled by top layer
-                .m_axis_tdata(m_axis_tdata[i]),       // Parallel output array
-                .m_axis_tvalid(w_valid_out[i]));
+                      .s_axis_tdata(delayed_tdata),          // Broadcasting scalar data
+                      .s_axis_tdata_wgt(w_weights),          // Scalar weight for this neuron
+                      .s_axis_tvalid(delayed_tvalid),
+                      .s_axis_tlast(delayed_tlast),
+                      .s_axis_tready(),                     // Handled by top layer
+                      .m_axis_tdata(m_axis_tdata[i]),       // Parallel output array
+                      .m_axis_tvalid(w_valid_out[i]));
          end
      endgenerate
     
