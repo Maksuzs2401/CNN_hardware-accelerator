@@ -94,8 +94,8 @@ The terminal stage of the accelerator uses a combinational comparison b the arra
 features to locate the highest activated value (`current_maxval`), outputting its corresponding index (`current_idx`) as the final predicted
 Arrhythmia class.
 
-## Future Modifications
-Reduce the number of layers to reduce the silicon area and overall power usage.
+## FUTURE MODIFICATIONS
+Reduce the number of layers to reduce the silicon area and overall power usage, while maintaining the sensitivity and specificity.
 Reduce the critical path.
 Modify the whole pipeline such that it can be deployed on resource constrained chip. 
 
