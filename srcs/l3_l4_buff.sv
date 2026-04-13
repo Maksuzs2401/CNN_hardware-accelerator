@@ -1,23 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 07.04.2026 02:17:29
-// Design Name: 
-// Module Name: l3_l4_buff
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
 `include "config.vh"
 
 module l3_l4_buff #(parameter IN_CHANNELS = `L3_neurons,
@@ -55,8 +36,7 @@ module l3_l4_buff #(parameter IN_CHANNELS = `L3_neurons,
         end else begin
             if(s_axis_tvalid && s_axis_tready && is_flattening)begin
                 for(int i=0; i<IN_CHANNELS; i++)begin
-                    // FIX 5: Quantize the 24-bit input to 8-bit before saving
-                    scaled_val = s_axis_tdata[i] >>> SCALE_SHIFT;
+                    scaled_val = s_axis_tdata[i] >>> SCALE_SHIFT;       // Quantize the 24-bit input to 8-bit before saving
                     if (scaled_val > 24'sd127) begin
                         one_dime_mem[(step_count*IN_CHANNELS)+i] <= 8'sd127;
                     end else begin
