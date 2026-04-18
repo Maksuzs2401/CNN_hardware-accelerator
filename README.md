@@ -36,7 +36,7 @@ the Dense Layer efficiently. All the individual modules are verified seperately 
 (Note: The final Argmax classification layer to process these 64 features into a single prediction is currently under active development).
 
 ## FPGA SYSTEM 
-<img width="1169" height="522" alt="CNN drawio" src="https://github.com/user-attachments/assets/8b257261-54b0-489e-b89d-7518d8ba3f80" />
+<img width="1169" height="522" alt="cnn_diagram" src="https://github.com/user-attachments/assets/e492ef39-0ec5-4d97-9762-96640a4e98fe" />
 ---
 The hardware accelerator is a custom-designed, fully pipelined Convolutional Neural Network written in SystemVerilog, 
 to achieve real-time ECG classification through deeply optimized data streaming, custom Multiply-Accumulate (MAC) 
