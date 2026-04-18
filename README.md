@@ -1,15 +1,14 @@
 # CNN Hardware Accelerator for ECG Arrhythmia Classification
 This project implements a 5-layer Convolutional neural network for real-time ECG heartbeat classification on an FPGA. The model is trained in python  
-and implemented on FPGA in systemverilog. The four different states of classifications are: Normal, Supraventricular, Ventricular,   
+and implemented on an FPGA in systemverilog. The four different states of classifications are: Normal, Supraventricular, Ventricular,   
 Fusion and Unknown/Paced.   
 
-> **Current Status:** Active Development. The Python software training pipeline is complete. The FPGA hardware pipeline is complete
-up to Layer 4 (Dense Layer). The final Argmax classification layer is currently being implemented in RTL.
+> **Current Status:** Active Development. The Python software training pipeline is under mdification, decided to reduce the number of dense layers to 1. The FPGA hardware pipeline is complete. **The FPGA model passed the test with dummy/known values.** The final testing is to be done on actual trained weights. 
 
 ## Project Team & Roles    
-- **_Sujal Makwana:_** Lead Hardware Engineer    
+- **_Sujal Makwana (B.Tech ECE, LDCE):_** Lead Hardware Engineer    
 – Contribution: Designing FPGA architecture, RTL design (SystemVerilog).  
-- **_Devankit Shukla:_** Lead Machine Learning Engineer  
+- **_Devankit Shukla (DCP,Seneca Polytechnic):_** Lead Machine Learning Engineer  
 – Contribution: ECG data preprocessing, software training in Python,   
 and exporting the quantized weights for hardware use.
 ---  
@@ -33,7 +32,6 @@ the ECG signal begins streaming.
 Process: A custom RTL architecture is designed to stream the ECG data through multiple pipelined hardware layers.
 Current Architecture: The hardware utilizes line buffers, Multiply-Accumulate (MAC) arrays, and a "Wide-ROM" technique to process 
 the Dense Layer efficiently. All the individual modules are verified seperately and in-loop. 
-(Note: The final Argmax classification layer to process these 64 features into a single prediction is currently under active development).
 
 ## FPGA SYSTEM 
 <img width="900" height="522" alt="cnn_diagram" src="https://github.com/user-attachments/assets/e492ef39-0ec5-4d97-9762-96640a4e98fe" />
@@ -92,7 +90,14 @@ address fetches an entire 512-bit block into a synchronization register.A genera
 ***F. Final Classification (`argMAX.sv`)***   
 The terminal stage of the accelerator uses a combinational comparison b the array of output classes. It iterates through the final dense 
 features to locate the highest activated value (`current_maxval`), outputting its corresponding index (`current_idx`) as the final predicted
-Arrhythmia class.
+Arrhythmia class.  
+**1) Normal,**   
+**2) Supraventricular,**  
+**3) Ventricular,**  
+**4) Fusion,**  
+**5) Unknown/Paced.**
+
+> Final documentation under development.
 
 ## FUTURE MODIFICATIONS
 Reduce the number of layers to reduce the silicon area and overall power usage, while maintaining the sensitivity and specificity.
