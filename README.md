@@ -1,6 +1,6 @@
 # CNN Hardware Accelerator for ECG Arrhythmia Classification
 This project implements a 5-layer Convolutional neural network for real-time ECG heartbeat classification on an FPGA. The model is trained in python  
-and implemented on an FPGA in systemverilog. The four different states of classifications are: Normal, Supraventricular, Ventricular,   
+and implemented on an FPGA in systemverilog. The five different states of classifications are: Normal, Supraventricular, Ventricular,   
 Fusion and Unknown/Paced.   
 
 > **Current Status:** Active Development. The Python software training pipeline is under mdification, decided to reduce the number of dense layers to 1. The FPGA hardware pipeline is complete. **The FPGA model passed the test with dummy/known values.** The final testing is to be done on actual trained weights. 
