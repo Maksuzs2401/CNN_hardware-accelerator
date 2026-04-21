@@ -97,6 +97,85 @@ Arrhythmia class.
 **4) Fusion,**  
 **5) Unknown/Paced.**
 
+# Design Summary
+
+## Target Device
+| Parameter | Value |
+|-----------|-------|
+| FPGA | Xilinx Artix-7 XC7A100T-CSG324-1 |
+| Tool | Vivado 2024.1 |
+| Clock Frequency | 100 MHz (10 ns period) |
+| Top Module | `neuron_wrapp` |
+
+## Network Architecture
+| Layer | Type | Neurons | Kernel | Channels In | Weights/Neuron | Activation |
+|-------|------|---------|--------|-------------|----------------|------------|
+| L1 | Conv1D | 32 | 5 | 1 | 5 | ReLU |
+| — | MaxPool (2×) | — | — | 32 | — | — |
+| L2 | Conv1D | 64 | 5 | 32 | 160 | ReLU |
+| — | MaxPool (2×) | — | — | 64 | — | — |
+| L3 | Conv1D | 128 | 5 | 64 | 320 | ReLU |
+| — | MaxPool (2×) | — | — | 128 | — | — |
+| L4 | Dense | 5 | — | 2432 | 2432 | — |
+| — | ArgMax | 5 classes | — | — | — | — |
+
+## Resource Utilization (Post-Implementation)
+| Resource | Used | Available | Utilization |
+|----------|------|-----------|-------------|
+| Slice LUTs | 24,940 | 63,400 | 39.34% |
+| Slice Registers | 49,665 | 126,800 | 39.17% |
+| Block RAM (RAMB36E1) | 24 | 135 | 17.78% |
+| DSP48E1 | 229 | 240 | 95.42% |
+| Bonded IOBs | 17 | 210 | 8.10% |
+| BUFG | 1 | 32 | 3.13% |
+
+## Timing Summary (Post-Implementation, Post `phys_opt_design`)
+| Metric | Value | Status |
+|--------|-------|--------|
+| Clock Period | 10.000 ns | — |
+| Clock Frequency | 100 MHz | — |
+| Worst Negative Slack (Setup) | +0.038 ns | ✅ Met |
+| Worst Hold Slack | +0.024 ns | ✅ Met |
+| Worst Pulse Width Slack | +4.500 ns | ✅ Met |
+| Failing Endpoints | 0 | ✅ |
+| Total Endpoints | 100,159 | — |
+| Critical Path | L3 BRAM → DSP48 → Accumulator | — |
+
+## Power Estimate (Post-Route)
+| Component | Power (W) |
+|-----------|-----------|
+| Clocks | 0.066 |
+| Slice Logic | 0.048 |
+| Signals | 0.208 |
+| Block RAM | 0.044 |
+| DSP | 0.245 |
+| I/O | < 0.001 |
+| **Dynamic Total** | **0.611** |
+| Static | 0.094 |
+| **Total On-Chip** | **0.705** |
+| Junction Temperature | 28.2°C |
+
+## I/O Interface
+| Signal | Direction | Width | Description |
+|--------|-----------|-------|-------------|
+| `clk` | Input | 1 | 100 MHz system clock |
+| `rst_n` | Input | 1 | Active-low async reset |
+| `s_axis_tdata_ecg` | Input | 8 | INT8 ECG sample (AXI-Stream) |
+| `s_axis_tvalid_ecg` | Input | 1 | Input data valid |
+| `s_axis_tlast_ecg` | Input | 1 | Last channel in group |
+| `s_axis_tready_ecg` | Output | 1 | Backpressure to source |
+| `predicted_class` | Output | 3 | Classification result (0–4) |
+| `prediction_valid` | Output | 1 | Result ready strobe |
+
+## Data Format
+| Parameter | Value |
+|-----------|-------|
+| Input Precision | INT8 (signed) |
+| Weight Precision | INT8 (signed) |
+| Accumulator Width | 24-bit (L1–L3), 32-bit (L4) |
+| Input Length | 187 samples per inference |
+| Output Classes | 5 |
+
 > Final documentation under development.
 
 ## FUTURE MODIFICATIONS
