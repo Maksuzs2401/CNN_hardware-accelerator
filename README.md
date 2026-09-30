@@ -91,11 +91,11 @@ address fetches an entire 512-bit block into a synchronization register.A genera
 The terminal stage of the accelerator uses a combinational comparison across the array of output classes. It iterates through the final dense 
 features to locate the highest activated value (`current_maxval`), outputting its corresponding index (`current_idx`) as the final predicted
 Arrhythmia class.  
-**1) Normal,**   
-**2) Supraventricular,**  
-**3) Ventricular,**  
-**4) Fusion,**  
-**5) Unknown/Paced.**
+**0-Normal,**   
+**1-Supraventricular,**  
+**2-Ventricular,**  
+**3-Fusion,**  
+**4-Unknown/Paced.**
 
 # Design Summary
 
