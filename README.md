@@ -1,9 +1,9 @@
 # CNN Hardware Accelerator for ECG Arrhythmia Classification
-This project implements a 5-layer Convolutional neural network for real-time ECG heartbeat classification on an FPGA. The model is trained in python  
-and implemented on an FPGA in systemverilog. The five different states of classifications are: Normal, Supraventricular, Ventricular,   
+This project implements a 5-layer Convolutional Neural Network for real-time ECG heartbeat classification on an FPGA. The model is trained in Python  
+and implemented on an FPGA in SystemVerilog. The five different states of classifications are: Normal, Supraventricular, Ventricular,   
 Fusion and Unknown/Paced.   
 
-> **Current Status:** Active Development. The Python software training pipeline is under mdification, decided to reduce the number of dense layers to 1. The FPGA hardware pipeline is complete. **The FPGA model passed the test with dummy/known values.** The final testing is to be done on actual trained weights. 
+> **Current Status:** Active Development. The Python software training pipeline is under modification, decided to reduce the number of dense layers to 1. The FPGA hardware pipeline is complete. **The FPGA model passed the test with dummy/known values.** The final testing is to be done on actual trained weights. 
 
 ## Project Team & Roles    
 - **_Sujal Makwana (B.Tech ECE, LDCE):_** Lead Hardware Engineer    
@@ -20,7 +20,7 @@ The system pipeline is divided into three main phases: offline training, data ha
 ### 1. Phase 1: Software Training & Quantization (Python)
 Process: Raw ECG heartbeat datasets available on Kaggle are preprocessed and used to train a custom 1D Convolutional Neural Network (CNN) in Python.
 
-Hardware Prep: Once the desired accuracy is achieved, the floating-point model is quantized into INT-8 format. 
+Hardware Prep: Once the desired accuracy is achieved, the floating-point model is quantized into INT8 format. 
 The final weights and biases for all layers are exported as standard .hex and .mem files.
 
 ### 2. Phase 2: The Data Handoff (The Bridge)
@@ -88,7 +88,7 @@ address fetches an entire 512-bit block into a synchronization register.A genera
 (`[(i * data_width) +: data_width]`) to feed all 64 parallel neurons simultaneously in exactly one clock cycle.
 
 ***F. Final Classification (`argMAX.sv`)***   
-The terminal stage of the accelerator uses a combinational comparison b the array of output classes. It iterates through the final dense 
+The terminal stage of the accelerator uses a combinational comparison across the array of output classes. It iterates through the final dense 
 features to locate the highest activated value (`current_maxval`), outputting its corresponding index (`current_idx`) as the final predicted
 Arrhythmia class.  
 **1) Normal,**   
@@ -181,5 +181,5 @@ Arrhythmia class.
 ## FUTURE MODIFICATIONS
 Reduce the number of layers to reduce the silicon area and overall power usage, while maintaining the sensitivity and specificity.
 Reduce the critical path.
-Modify the whole pipeline such that it can be deployed on resource constrained chip. 
+Modify the whole pipeline such that it can be deployed on resource-constrained chip. 
 
